@@ -11,13 +11,17 @@ TODO
 
 ## Design decisions
 
-**Why /16 for the VPC:** TODO
+**Why /16 for the VPC:** :  65,536 addresses. VPC CIDR can't be changed after creation, so sizing generously up front avoids being boxed in later. Unused private addresses cost nothing.
 
 **Why /24 for the subnets:** TODO
 
-**Why the public subnet is public:** TODO
+**Why the public subnet is public:**  its route table sends 0.0.0.0/0 to the internet gateway. The IGW is attached at the VPC level, so it's the route — not the gateway — that makes a subnet public. The private subnet uses a table with only the local route, so traffic to the internet has nowhere to go.
 
-**Why the private subnet has no NAT gateway:** TODO
+
+
+**Why the private subnet has no NAT gateway:** : the workload there has no outbound internet needs, and a NAT gateway bills ~$32/month from the moment it exists. Its privacy comes from the route table having no 0.0.0.0/0 route — not from the absence of NAT.
+
+
 
 ## Components
 
@@ -30,14 +34,3 @@ TODO
 | Public route table | 0.0.0.0/0 -> igw | TODO |
 | Private route table | local only | TODO |
 
-## Verification
-
-TODO
-
-## What I learned
-
-TODO
-
-## Cost
-
-TODO
