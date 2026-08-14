@@ -1,94 +1,11 @@
 provider "aws" {
-  region = "us-east-1"
+  region = var.aws_region
 }
 
-resource "aws_vpc" "main" {
-  cidr_block = "172.16.0.0/16"
-
-  tags = {
-    Name = "tf-vpc"
-  }
-}
-
-resource "aws_subnet" "public_1a" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "172.16.1.0/24"
-  availability_zone = "us-east-1a"
-
-  tags = {
-    Name = "tf-public-1a"
-  }
-}
-resource "aws_subnet" "private_1a" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "172.16.2.0/24"
-  availability_zone = "us-east-1a"
-
-  tags = {
-    Name = "tf-private-1a"
-  }
-}
-
-resource "aws_subnet" "public_1b" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "172.16.3.0/24"
-  availability_zone = "us-east-1b"
-
-  tags = {
-    Name = "tf-public-1b"
-  }
-}
-
-resource "aws_subnet" "private_1b" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "172.16.4.0/24"
-  availability_zone = "us-east-1b"
-
-  tags = {
-    Name = "tf-private-1b"
-  }
-}
-
-resource "aws_subnet" "private_1c" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "172.16.6.0/24"
-  availability_zone = "us-east-1c"
-
-  tags = {
-    Name = "tf-private-1c"
-  }
-
-}
-
-resource "aws_internet_gateway" "main" {
-  vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name = "tf-igw"
-  }
-}
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main.id
-  }
-
-  tags = {
-    Name = "tf-public-rt"
-  }
-}
-
-resource "aws_route_table_association" "public_1a" {
-  subnet_id      = aws_subnet.public_1a.id
-  route_table_id = aws_route_table.public.id
-}
-
-resource "aws_route_table_association" "public_1b" {
-  subnet_id      = aws_subnet.public_1b.id
-  route_table_id = aws_route_table.public.id
+module "vpc" {
+  source   = "./modules/vpc"
+  vpc_cidr = var.vpc_cidr
+  name     = var.project_name
 }
 # Find the latest Amazon Linux 2023 image
 data "aws_ami" "al2023" {
@@ -104,7 +21,7 @@ data "aws_ami" "al2023" {
 # Security group for the load balancer
 resource "aws_security_group" "alb" {
   name   = "tf-alb-sg"
-  vpc_id = aws_vpc.main.id
+  vpc_id = module.vpc.vpc_id
 
   ingress {
     from_port   = 80
@@ -121,12 +38,12 @@ resource "aws_security_group" "alb" {
   }
 
   tags = { Name = "tf-alb-sg" }
-}
 
+}
 # Security group for the web servers
 resource "aws_security_group" "web" {
   name   = "tf-web-sg"
-  vpc_id = aws_vpc.main.id
+  vpc_id = module.vpc.vpc_id
 
   ingress {
     from_port       = 80
@@ -147,8 +64,8 @@ resource "aws_security_group" "web" {
 
 resource "aws_instance" "web_1a" {
   ami                    = data.aws_ami.al2023.id
-  instance_type          = "t3.micro"
-  subnet_id              = aws_subnet.private_1a.id
+  instance_type          = var.instance_type
+  subnet_id = module.vpc.private_subnet_ids[0]
   vpc_security_group_ids = [aws_security_group.web.id]
 
   user_data = <<-EOF
@@ -162,8 +79,8 @@ resource "aws_instance" "web_1a" {
 
 resource "aws_instance" "web_1b" {
   ami                    = data.aws_ami.al2023.id
-  instance_type          = "t3.micro"
-  subnet_id              = aws_subnet.private_1b.id
+  instance_type          = var.instance_type
+  subnet_id = module.vpc.private_subnet_ids[1]
   vpc_security_group_ids = [aws_security_group.web.id]
 
   user_data = <<-EOF
@@ -177,17 +94,17 @@ resource "aws_instance" "web_1b" {
 resource "aws_lb" "main" {
   name               = "tf-alb"
   load_balancer_type = "application"
-  subnets            = [aws_subnet.public_1a.id, aws_subnet.public_1b.id]
+  subnets = module.vpc.public_subnet_ids
   security_groups    = [aws_security_group.alb.id]
 
-  tags = { Name = "tf-alb" }
-}
+  tags = { Name = "tf-alb"}
 
+}
 resource "aws_lb_target_group" "web" {
   name     = "tf-web-tg"
   port     = 80
   protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
+  vpc_id   = module.vpc.vpc_id
 
   health_check {
     path                = "/"
@@ -225,8 +142,4 @@ resource "aws_lb_listener" "http" {
 
 output "alb_url" {
   value = "http://${aws_lb.main.dns_name}"
-}
-
-output "vpc_id" {
-  value = "http://${aws_vpc.main.id}"
 }
