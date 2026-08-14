@@ -50,14 +50,14 @@ resource "aws_subnet" "private_1b" {
 }
 
 resource "aws_subnet" "private_1c" {
-    vpc_id = aws_vpc.main.id
-    cidr_block ="172.16.6.0/24"
-    availability_zone = "us-east-1c"
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "172.16.6.0/24"
+  availability_zone = "us-east-1c"
 
-    tags = {
-      Name = "tf-private-1c"
-    }
-  
+  tags = {
+    Name = "tf-private-1c"
+  }
+
 }
 
 resource "aws_internet_gateway" "main" {
@@ -162,7 +162,7 @@ resource "aws_instance" "web_1a" {
 
 resource "aws_instance" "web_1b" {
   ami                    = data.aws_ami.al2023.id
-  instance_type          =  "t3.micro"
+  instance_type          = "t3.micro"
   subnet_id              = aws_subnet.private_1b.id
   vpc_security_group_ids = [aws_security_group.web.id]
 
