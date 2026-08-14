@@ -65,7 +65,7 @@ resource "aws_security_group" "web" {
 resource "aws_instance" "web_1a" {
   ami                    = data.aws_ami.al2023.id
   instance_type          = var.instance_type
-  subnet_id = module.vpc.private_subnet_ids[0]
+  subnet_id              = module.vpc.private_subnet_ids[0]
   vpc_security_group_ids = [aws_security_group.web.id]
 
   user_data = <<-EOF
@@ -80,7 +80,7 @@ resource "aws_instance" "web_1a" {
 resource "aws_instance" "web_1b" {
   ami                    = data.aws_ami.al2023.id
   instance_type          = var.instance_type
-  subnet_id = module.vpc.private_subnet_ids[1]
+  subnet_id              = module.vpc.private_subnet_ids[1]
   vpc_security_group_ids = [aws_security_group.web.id]
 
   user_data = <<-EOF
@@ -94,10 +94,10 @@ resource "aws_instance" "web_1b" {
 resource "aws_lb" "main" {
   name               = "tf-alb"
   load_balancer_type = "application"
-  subnets = module.vpc.public_subnet_ids
+  subnets            = module.vpc.public_subnet_ids
   security_groups    = [aws_security_group.alb.id]
 
-  tags = { Name = "tf-alb"}
+  tags = { Name = "tf-alb" }
 
 }
 resource "aws_lb_target_group" "web" {
