@@ -2,6 +2,10 @@ name: Terraform Check
 
 on: push
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -16,10 +20,20 @@ jobs:
       - name: Check formatting
         run: terraform fmt -check -recursive
 
+      - name: Get AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::039324592089:role/github-actions-role
+          aws-region: us-east-1
+
       - name: Set up Terraform
-        run: terraform init -backend=false
+        run: terraform init
         working-directory: 03-three-tier-alb
 
       - name: Validate the code
         run: terraform validate
+        working-directory: 03-three-tier-alb
+
+      - name: Plan
+        run: terraform plan -lock=false
         working-directory: 03-three-tier-alb
