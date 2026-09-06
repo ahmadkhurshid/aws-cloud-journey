@@ -24,6 +24,7 @@ resource "aws_security_group" "alb" {
   vpc_id = module.vpc.vpc_id
 
   ingress {
+    description = "HTTP from the internet - this is a public web application"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -31,6 +32,7 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
+    description = "Allow all outbound - the ALB initiates connections to its targets"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -46,6 +48,7 @@ resource "aws_security_group" "web" {
   vpc_id = module.vpc.vpc_id
 
   ingress {
+    description     = "HTTP from the load balancer only - not reachable from the internet"
     from_port       = 80
     to_port         = 80
     protocol        = "tcp"
@@ -53,6 +56,7 @@ resource "aws_security_group" "web" {
   }
 
   egress {
+    description = "Allow all outbound - instances need to reach package repositories"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -67,6 +71,16 @@ resource "aws_instance" "web_1a" {
   instance_type          = var.instance_type
   subnet_id              = module.vpc.private_subnet_ids[0]
   vpc_security_group_ids = [aws_security_group.web.id]
+
+  # Require IMDSv2, so instance credentials cannot be read via SSRF
+  metadata_options {
+    http_tokens   = "required"
+    http_endpoint = "enabled"
+  }
+
+  root_block_device {
+    encrypted = true
+  }
 
   user_data = <<-EOF
     #!/bin/bash
@@ -83,6 +97,16 @@ resource "aws_instance" "web_1b" {
   subnet_id              = module.vpc.private_subnet_ids[1]
   vpc_security_group_ids = [aws_security_group.web.id]
 
+  # Require IMDSv2, so instance credentials cannot be read via SSRF
+  metadata_options {
+    http_tokens   = "required"
+    http_endpoint = "enabled"
+  }
+
+  root_block_device {
+    encrypted = true
+  }
+
   user_data = <<-EOF
     #!/bin/bash
     echo "Hello from server 1b" > /index.html
@@ -96,6 +120,9 @@ resource "aws_lb" "main" {
   load_balancer_type = "application"
   subnets            = module.vpc.public_subnet_ids
   security_groups    = [aws_security_group.alb.id]
+
+  # Reject malformed headers rather than passing them to the targets
+  drop_invalid_header_fields = true
 
   tags = { Name = "tf-alb" }
 

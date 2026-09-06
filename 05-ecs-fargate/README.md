@@ -126,10 +126,10 @@ Applied, confirmed working, and destroyed in the same session.
 
 Total cost for the demonstration: approximately 8 pence.
 
-<!-- Add your screenshots here, for example:
-![Application served through the load balancer](screenshots/browser.png)
-![Both targets healthy](screenshots/targets-healthy.png)
--->
+![The application served through the load balancer](screenshots/alb-serving.png)
+
+The hostname in the response is the ECS task ID. Refreshing returns a different one,
+which is the load balancer distributing requests between the two tasks.
 
 ## Running it
 
@@ -159,6 +159,32 @@ terraform destroy
 
 **The load balancer costs roughly $16/month if left running.** Destroy it when you
 are finished.
+
+## Security scanning
+
+The CI pipeline runs [tfsec](https://github.com/aquasecurity/tfsec) on every push,
+before it authenticates to AWS, since the scanner only reads Terraform files.
+
+Some findings were fixed. Others are deliberate, and are recorded here rather than
+silently ignored — an accepted risk with a reason is not the same as one that was
+missed.
+
+**Fixed**
+
+- Every security group rule now carries a `description`, so the intent is readable
+  without tracing the references.
+- `drop_invalid_header_fields = true` on the load balancer, so malformed headers are
+  rejected rather than passed through to the tasks.
+
+**Accepted, with reasons**
+
+| Finding | Why it stands |
+|---|---|
+| Ingress from `0.0.0.0/0` on port 80 | This is a public website. The load balancer has to accept traffic from anyone; restricting it would defeat the purpose. The tasks behind it are not open — their security group only accepts the ALB's. |
+| HTTP rather than HTTPS | Requires a domain name and an ACM certificate. Deferred; noted below as a limitation. |
+| No VPC flow logs | Useful in production for investigating traffic. They cost money to store, and this stack is destroyed the same day it is built. |
+| No ALB access logs | Same reasoning — needs an S3 bucket and ongoing storage. |
+| Unrestricted egress | Tasks must reach ECR and CloudWatch. Restricting egress to those specific endpoints would be tighter and is what I would do in production. |
 
 ## Known limitations
 

@@ -100,3 +100,18 @@ removes everything billable.
 
 State files are gitignored — Terraform state can contain secrets in plain text and
 must never be committed.
+
+## Security scanning
+
+The CI pipeline runs tfsec on every push. Findings that were fixed here:
+
+- `description` on every security group rule
+- `drop_invalid_header_fields = true` on the load balancer
+- **IMDSv2 required** on both EC2 instances (`http_tokens = "required"`), so the
+  instance metadata service cannot be reached through a server-side request forgery
+  to steal the instance's IAM credentials
+- **Encrypted root volumes** on both instances — encryption at rest costs nothing
+
+Accepted deliberately: ingress from `0.0.0.0/0` on port 80, because the load
+balancer is meant to be public. The instances themselves sit in private subnets and
+only accept traffic from the ALB's security group.

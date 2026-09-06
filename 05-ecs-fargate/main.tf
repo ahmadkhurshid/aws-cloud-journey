@@ -90,13 +90,14 @@ resource "aws_security_group" "alb" {
   vpc_id = aws_vpc.main.id
 
   ingress {
+    description = "HTTP from the internet - this is a public web application"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-
   }
   egress {
+    description = "Allow all outbound - the ALB initiates connections to its targets"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -113,12 +114,14 @@ resource "aws_security_group" "web" {
   vpc_id = aws_vpc.main.id
 
   ingress {
+    description     = "Application port, from the load balancer only"
     from_port       = 8080
     to_port         = 8080
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
   egress {
+    description = "Allow all outbound - tasks pull images from ECR and send logs to CloudWatch"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -137,6 +140,9 @@ resource "aws_lb" "main-lb" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = [aws_subnet.public_1a.id, aws_subnet.public_1b.id]
+
+  # Reject malformed headers rather than passing them to the tasks
+  drop_invalid_header_fields = true
 
   tags = {
     Name = "ecs-app-main-lb"
