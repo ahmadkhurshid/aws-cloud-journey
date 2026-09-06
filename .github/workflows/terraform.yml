@@ -20,7 +20,10 @@ jobs:
       - name: Check formatting
         run: terraform fmt -check -recursive
 
-     
+      - name: Security scan
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          soft_fail: true
 
       - name: Get AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
