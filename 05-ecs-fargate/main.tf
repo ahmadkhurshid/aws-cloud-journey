@@ -199,7 +199,7 @@ resource "aws_ecs_task_definition" "app" {
   memory                   = "512"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  execution_role_arn       =aws_iam_role.ecs_execution.arn
+  execution_role_arn       = aws_iam_role.ecs_execution.arn
 
   container_definitions = jsonencode([
     {
