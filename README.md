@@ -1,36 +1,55 @@
-# aws-cloud-journey
-# Building a VPC from Scratch
+# AWS Cloud Journey
 
-## What I built
+Infrastructure projects built while learning AWS, Terraform and containers. Each
+folder is a self-contained project with its own README explaining what it does and
+why it was built that way.
 
-TODO
+Everything is defined as code. Nothing here was clicked together in the console.
 
-## Architecture
+## Projects
 
-TODO
-
-## Design decisions
-
-**Why /16 for the VPC:** :  65,536 addresses. VPC CIDR can't be changed after creation, so sizing generously up front avoids being boxed in later. Unused private addresses cost nothing.
-
-**Why /24 for the subnets:** TODO
-
-**Why the public subnet is public:**  its route table sends 0.0.0.0/0 to the internet gateway. The IGW is attached at the VPC level, so it's the route — not the gateway — that makes a subnet public. The private subnet uses a table with only the local route, so traffic to the internet has nowhere to go.
-
-
-
-**Why the private subnet has no NAT gateway:** : the workload there has no outbound internet needs, and a NAT gateway bills ~$32/month from the moment it exists. Its privacy comes from the route table having no 0.0.0.0/0 route — not from the absence of NAT.
-
-
-
-## Components
-
-| Resource | Value | Purpose |
+| | Project | What it covers |
 |---|---|---|
-| VPC | 10.0.0.0/16 | TODO |
-| Public subnet | 10.0.1.0/24, us-east-1a | TODO |
-| Private subnet | 10.0.2.0/24, us-east-1a | TODO |
-| Internet gateway | learning-igw | TODO |
-| Public route table | 0.0.0.0/0 -> igw | TODO |
-| Private route table | local only | TODO |
+| 01 | [VPC from scratch](01-vpc-from-scratch) | VPC, subnets, internet gateway, route tables — built in the console to learn the model |
+| 02 | [VPC as Terraform](02-vpc-terraform) | The same network rebuilt as code |
+| 03 | [Three-tier app](03-three-tier-alb) | ALB, EC2 instances in private subnets, Terraform modules, remote state in S3 |
+| 04 | [Containerised app](04-containerised-app) | A Python web app, a Dockerfile, and an image pushed to ECR |
+| 05 | [ECS Fargate](05-ecs-fargate) | The full stack: VPC, ALB, health checks, IAM, and containers running on Fargate |
 
+**Project 05 is the one to look at.** It is a complete containerised application —
+network, load balancer, security groups, IAM role, task definition and service —
+written from scratch rather than reusing the earlier modules.
+
+## CI
+
+[`.github/workflows/terraform.yml`](.github/workflows/terraform.yml) runs on every
+push: `terraform fmt -check`, `terraform validate` and `terraform plan`.
+
+It authenticates to AWS with **OpenID Connect** rather than stored access keys, so
+there are no long-lived credentials in GitHub. The IAM role it assumes has
+`ReadOnlyAccess`, since the pipeline only needs to plan.
+
+## What is covered
+
+**Networking** — VPC design and CIDR planning, public and private subnets across
+Availability Zones, internet and NAT gateways, route tables, security groups, NACLs,
+VPC endpoints.
+
+**Terraform** — variables, outputs, modules, `count`, remote state in S3 with
+locking, and the `fmt` / `validate` / `plan` / `apply` cycle.
+
+**Containers** — Dockerfiles, images and containers, ECR, and ECS on Fargate with
+task definitions, execution roles and services.
+
+**Load balancing** — Application Load Balancers, target groups, health checks and
+listeners, with security groups referencing each other rather than IP ranges.
+
+**IAM** — roles, trust policies and least-privilege permissions.
+
+## Cost
+
+Every project is applied, verified and destroyed in the same session. Total spend
+across all five is under one pound.
+
+Load balancers and NAT gateways are the expensive parts of a small AWS setup, and
+each project README notes where a cost trade-off was made.
